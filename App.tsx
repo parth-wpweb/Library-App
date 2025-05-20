@@ -30,6 +30,7 @@ type Contact = {
 };
 
 import Bookslist from './src/screens/bookslist';
+import Translate from './src/screens/Translate';
 
 export function HomeScreen() {
   const isDarkMode = useColorScheme() === 'dark';
@@ -176,6 +177,11 @@ export function HomeScreen() {
           onPress={() => navigation.navigate('BookList')}>
           <Text style={styles.buttonText}>Go to Books</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, styles.accountButton]}
+          onPress={() => navigation.navigate('Translate')}>
+          <Text style={styles.buttonText}>Go to Translate</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -188,6 +194,7 @@ function RootStack() {
     <Stack.Navigator>
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="BookList" component={Bookslist} />
+      <Stack.Screen name="Translate" component={Translate} />
     </Stack.Navigator>
   );
 }
