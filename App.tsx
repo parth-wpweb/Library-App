@@ -8,8 +8,11 @@ import {
   StatusBar,
   useColorScheme,
   StyleSheet,
+  TouchableOpacity,
 } from 'react-native';
 import {Colors} from 'react-native/Libraries/NewAppScreen';
+import {NavigationContainer, useNavigation} from '@react-navigation/native';
+import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
 import {connectToDatabase, createTables} from './src/db/database';
 import {
@@ -26,8 +29,12 @@ type Contact = {
   phoneNumber: string;
 };
 
-export default function App(): React.JSX.Element {
+import Bookslist from './src/screens/bookslist';
+
+export function HomeScreen() {
   const isDarkMode = useColorScheme() === 'dark';
+
+  const navigation = useNavigation();
 
   /* ---------- form state ---------- */
   const [firstName, setFirstName] = useState('');
@@ -164,8 +171,32 @@ export default function App(): React.JSX.Element {
             </View>
           </View>
         ))}
+        <TouchableOpacity
+          style={[styles.button, styles.accountButton]}
+          onPress={() => navigation.navigate('BookList')}>
+          <Text style={styles.buttonText}>Go to Books</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
+  );
+}
+
+const Stack = createNativeStackNavigator();
+
+function RootStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="BookList" component={Bookslist} />
+    </Stack.Navigator>
+  );
+}
+
+export default function App() {
+  return (
+    <NavigationContainer>
+      <RootStack />
+    </NavigationContainer>
   );
 }
 
@@ -198,4 +229,26 @@ const styles = StyleSheet.create({
   cardButtons: {marginLeft: 12},
   contactName: {fontSize: 17, fontWeight: '500'},
   contactPhone: {color: '#555'},
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 40,
+    color: '#333',
+  },
+  button: {
+    width: '80%',
+    backgroundColor: '#0061AF',
+    paddingVertical: 14,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  accountButton: {
+    backgroundColor: '#28A745', // Different color for Account button
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 18,
+  },
 });
