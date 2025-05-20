@@ -31,6 +31,7 @@ type Contact = {
 
 import Bookslist from './src/screens/bookslist';
 import Translate from './src/screens/Translate';
+import {getTranslationCount} from './src/db/translateStore';
 
 export function HomeScreen() {
   const isDarkMode = useColorScheme() === 'dark';

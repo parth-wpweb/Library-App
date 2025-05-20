@@ -36,6 +36,33 @@ export const createTables = async (db: SQLiteDatabase) => {
   }
 };
 
+export const createTranslationTable = async (db: SQLiteDatabase) => {
+  const createQuery = `CREATE TABLE IF NOT EXISTS translations (
+  key TEXT PRIMARY KEY,
+  de TEXT,
+  dz TEXT,
+  el TEXT,
+  es TEXT,
+  fr TEXT,
+  gu TEXT,
+  hi TEXT,
+  it TEXT,
+  ja TEXT,
+  la TEXT,
+  ml TEXT,
+  nl TEXT,
+  ta TEXT,
+  en TEXT
+) `;
+
+  try {
+    await db.executeSql(createQuery);
+  } catch (error) {
+    console.error(error);
+    throw Error(`Failed to create translation tables`);
+  }
+};
+
 export const getTableNames = async (db: SQLiteDatabase): Promise<string[]> => {
   try {
     const tableNames: string[] = [];
