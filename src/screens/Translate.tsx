@@ -1,97 +1,95 @@
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
   StyleSheet,
   Text,
   View,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
+  Button,
 } from 'react-native';
-import {getData} from '../api/translateApi';
-import {connectToDatabase, createTranslationTable} from '../db/database';
 import {SQLiteDatabase} from 'react-native-sqlite-storage';
+
+import {getData} from '../api/translateApi';
+import {
+  createLocalizationTable,
+  getDBConnection,
+  insertLocalizationData,
+  getTranslation,
+} from '../db/translateStore';
+
+/* ---------- component ---------- */
 
 export default function Translate() {
   const [translations, setTranslations] = useState<any[]>([]);
   const [languages, setLanguages] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  /* ───────────────────────────────
-     1.  Open DB  ➜  Create table(s)
-  ────────────────────────────────*/
+  /** keep the handle in a ref so cleanup sees the same instance */
+  const dbRef = useRef<SQLiteDatabase | null>(null);
+
+  /* 1️⃣  Open DB once -------------------------------------------------------- */
   useEffect(() => {
+    let mounted = true; // safeguard for race conditions
+
     (async () => {
-      const db = await connectToDatabase();
-      await createTranslationTable(db);
-      await fetchAndCacheTranslations(db); // do the heavy work
+      try {
+        const db = await getDBConnection();
+        if (!mounted) {
+          await db.close();
+          return;
+        }
+        dbRef.current = db;
+        await createLocalizationTable(db);
+        await fetchAndCacheTranslations(db);
+      } catch (err) {
+        console.error(err);
+        Alert.alert('Error', 'DB initialisation failed');
+        setLoading(false);
+      }
     })();
+
+    return () => {
+      mounted = false;
+      dbRef.current?.close();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ───────────────────────────────
-     2.  Fetch → insert → render
-  ────────────────────────────────*/
-  const fetchAndCacheTranslations = async (db: SQLiteDatabase) => {
+  /* 2️⃣  Fetch → insert → render ------------------------------------------- */
+  const fetchAndCacheTranslations = useCallback(async (db: SQLiteDatabase) => {
     try {
       const apiStart = Date.now();
-      const response = await getData(); // fetch API
-      const contentData = response?.data?.contentData || [];
+      const response = await getData();
+      const contentData: any[] = response?.data?.contentData ?? [];
       const apiTime = Date.now() - apiStart;
 
-      if (contentData.length === 0) {
+      if (!contentData.length) {
         throw new Error('API returned empty list');
       }
 
-      // discover languages once
       const langCodes = Object.keys(contentData[0]).filter(k => k !== 'key');
       setLanguages(langCodes);
 
-      /* ---- bulk insert in a single transaction ---- */
       const insertStart = Date.now();
-      await db.transaction(tx => {
-        const stmt = `INSERT OR REPLACE INTO translations
-           (key, de, dz, el, es, fr, gu, hi, it, ja, la, ml, nl, ta, en)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-
-        for (const row of contentData) {
-          tx.executeSql(stmt, [
-            row.key,
-            row.de,
-            row.dz,
-            row.el,
-            row.es,
-            row.fr,
-            row.gu,
-            row.hi,
-            row.it,
-            row.ja,
-            row.la,
-            row.ml,
-            row.nl,
-            row.ta,
-            row.en,
-          ]);
-        }
-      });
+      await insertLocalizationData(db, contentData);
       const insertTime = Date.now() - insertStart;
 
       console.log(
-        `✅ Fetched ${contentData.length} rows in ${apiTime} ms; ` +
+        `✅ fetched ${contentData.length} rows in ${apiTime} ms, ` +
           `inserted in ${insertTime} ms`,
       );
 
-      /* show the result (first 4 rows only) */
-      setTranslations(contentData);
+      setTranslations(contentData.slice(0, 4)); // demo only
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'Failed to fetch or cache translations');
     } finally {
-      setLoading(false); // rendering starts only now
+      setLoading(false);
     }
-  };
+  }, []);
 
-  /* ───────────────────────────────
-     3.  UI
-  ────────────────────────────────*/
+  /* 3️⃣  UI ----------------------------------------------------------------- */
   if (loading) {
     return (
       <View style={styles.center}>
@@ -102,10 +100,9 @@ export default function Translate() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {translations.slice(0, 4).map((item, index) => (
-        <View key={index} style={styles.card}>
+      {translations.map((item, i) => (
+        <View key={i} style={styles.card}>
           <Text style={styles.keyText}>{item.key}</Text>
-
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {languages.map(lang => (
               <View key={lang} style={styles.langBlock}>
@@ -116,13 +113,37 @@ export default function Translate() {
           </ScrollView>
         </View>
       ))}
+      {/* <View style={{marginVertical: 20}}>
+        <Button
+          title="Test getTranslation()"
+          onPress={async () => {
+            if (!dbRef.current) return;
+            const db = dbRef.current;
+
+            const testKey = 'greeting'; // or any valid key from your data
+            const testLang = 'en';
+
+            const start = Date.now();
+            try {
+              const value = await getTranslation(db, testKey, testLang);
+              const elapsed = Date.now() - start;
+
+              Alert.alert(
+                'Translation Fetched',
+                `Key: ${testKey}\nLanguage: ${testLang}\nValue: ${value}\nTime: ${elapsed}ms`,
+              );
+            } catch (e) {
+              Alert.alert('Error', 'Translation lookup failed');
+              console.error(e);
+            }
+          }}
+        />
+      </View> */}
     </ScrollView>
   );
 }
 
-/* ───────────────────────────────
-   Styles (unchanged)
-────────────────────────────────*/
+/* ---------- styles -------------------------------------------------------- */
 const styles = StyleSheet.create({
   center: {flex: 1, justifyContent: 'center', alignItems: 'center'},
   container: {padding: 16},
