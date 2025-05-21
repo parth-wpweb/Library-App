@@ -113,15 +113,15 @@ export default function Translate() {
           </ScrollView>
         </View>
       ))}
-      {/* <View style={{marginVertical: 20}}>
+      <View style={{marginVertical: 20}}>
         <Button
           title="Test getTranslation()"
           onPress={async () => {
             if (!dbRef.current) return;
             const db = dbRef.current;
 
-            const testKey = 'greeting'; // or any valid key from your data
-            const testLang = 'en';
+            const testKey = 'home_e_sim_travel'; // or any valid key from your data
+            const testLang = 'gu';
 
             const start = Date.now();
             try {
@@ -138,7 +138,7 @@ export default function Translate() {
             }
           }}
         />
-      </View> */}
+      </View>
     </ScrollView>
   );
 }
